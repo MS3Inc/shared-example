@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking" xmlns:vm="http://www.mulesoft.org/schema/mule/vm" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/current/mule-vm.xsd
+http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd
+http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd">
+<!-- 	<configuration doc:name="Configuration">
+	  <expression-language>
+	  	<import class="com.mycompany.esb.logging.model.LogEvent"/>
+	  	<import class="com.mycompany.esb.logging.model.LogLevel"/>
+		<global-functions>
+		    def createLogEvent(logLevel,  correlationId,  message,  flowName,
+				 applicationName,  host){
+		        return new LogEvent(logLevel, correlationId, message, flowName, applicationName, host);
+		    }
+		</global-functions>
+	  </expression-language>
+	</configuration> -->
+	<flow name="log" processingStrategy="queued-asynchronous">
+        <vm:inbound-endpoint exchange-pattern="one-way" path="log" doc:name="VM"/>
+        <flow-ref name="log#[payload.logLevel]" doc:name="Flow Reference"/>
+    </flow>
+    <flow name="logERROR" processingStrategy="queued-asynchronous">
+        <logger message="LogEvent [correlationId=#[payload.correlationId], host=#[payload.host], applicationName=#[payload.applicationName], flowName=#[payload.flowName], message=#[payload.message]]" level="ERROR" category="com.mycompany.esb.log" doc:name="Logger"/>
+    </flow>
+    <flow name="logINFO" processingStrategy="queued-asynchronous">
+        <logger message="LogEvent [correlationId=#[payload.correlationId], host=#[payload.host], applicationName=#[payload.applicationName], flowName=#[payload.flowName], message=#[payload.message]]" level="INFO" category="com.mycompany.esb.log" doc:name="Logger"/>
+    </flow>
+    <flow name="logDEBUG" processingStrategy="queued-asynchronous">
+        <logger message="LogEvent [correlationId=#[payload.correlationId], host=#[payload.host], applicationName=#[payload.applicationName], flowName=#[payload.flowName], message=#[payload.message]]" level="DEBUG" category="com.mycompany.esb.log" doc:name="Logger"/>
+    </flow>
+    <sub-flow name="buildLogEventAndLog">
+        <set-variable variableName="applicationName" value="#[app.name]" doc:name="applicationName"/>
+        <set-variable variableName="hostName" value="#[server.host]" doc:name="hostName"/>
+        <!-- <set-payload value="LogEvent[ #[flowVars.logLevel],  #[sessionVars.correlationId],  #[payload],  #[flowVars.flowName],  #[app.name],  #[server.host]" mimeType="application/java" doc:name="Set Payload"/> -->
+        <dw:transform-message doc:name="Transform Message">
+            <dw:set-payload>
+		    	<![CDATA[
+			    	%dw 1.0
+					%output application/java
+					---
+					{
+						applicationName: flowVars.applicationName,
+						correlationId: sessionVars.correlationId,
+						host: flowVars.hostName,
+						flowName: flowVars.flowName,
+						message: payload,
+						logLevel: flowVars.logLevel
+					}]]>
+			</dw:set-payload>
+        </dw:transform-message> 
+        <vm:outbound-endpoint exchange-pattern="one-way" path="log" doc:name="VM"/>
+    </sub-flow>
+</mule>
