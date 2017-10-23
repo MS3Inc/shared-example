@@ -8,18 +8,6 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/current/mule-vm.xsd
 http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd
 http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd">
-<!-- 	<configuration doc:name="Configuration">
-	  <expression-language>
-	  	<import class="com.mycompany.esb.logging.model.LogEvent"/>
-	  	<import class="com.mycompany.esb.logging.model.LogLevel"/>
-		<global-functions>
-		    def createLogEvent(logLevel,  correlationId,  message,  flowName,
-				 applicationName,  host){
-		        return new LogEvent(logLevel, correlationId, message, flowName, applicationName, host);
-		    }
-		</global-functions>
-	  </expression-language>
-	</configuration> -->
 	<flow name="log" processingStrategy="queued-asynchronous">
         <vm:inbound-endpoint exchange-pattern="one-way" path="log" doc:name="VM"/>
         <flow-ref name="log#[payload.logLevel]" doc:name="Flow Reference"/>
@@ -34,9 +22,10 @@ http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee
         <logger message="LogEvent [correlationId=#[payload.correlationId], host=#[payload.host], applicationName=#[payload.applicationName], flowName=#[payload.flowName], message=#[payload.message]]" level="DEBUG" category="com.mycompany.esb.log" doc:name="Logger"/>
     </flow>
     <sub-flow name="buildLogEventAndLog">
-        <set-variable variableName="applicationName" value="#[app.name]" doc:name="applicationName"/>
-        <set-variable variableName="hostName" value="#[server.host]" doc:name="hostName"/>
-        <!-- <set-payload value="LogEvent[ #[flowVars.logLevel],  #[sessionVars.correlationId],  #[payload],  #[flowVars.flowName],  #[app.name],  #[server.host]" mimeType="application/java" doc:name="Set Payload"/> -->
+        <set-variable variableName="applicationName" value="#[app.name]" doc:name="set applicationName flowVar"/>
+        <set-variable variableName="hostName" value="#[server.host]" doc:name="set hostName flowVar"/>
+        <set-variable variableName="logLevel" value="#[flowVars.logLevel == empty ? com.mycompany.esb.logging.model.LogLevel.INFO : flowVars.logLevel]" doc:name="set lotLevel flowVar to INFO if not set"/>
+        
         <dw:transform-message doc:name="Transform Message">
             <dw:set-payload>
 		    	<![CDATA[
