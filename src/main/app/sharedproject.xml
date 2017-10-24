@@ -10,22 +10,25 @@ http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/m
 http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd">
 	<flow name="log" processingStrategy="queued-asynchronous">
         <vm:inbound-endpoint exchange-pattern="one-way" path="log" doc:name="VM"/>
-        <flow-ref name="log#[payload.logLevel]" doc:name="Flow Reference"/>
+        <set-variable variableName="loggingFlow" value="log#[payload.logLevel]" doc:name="Set loggingFlow flowVar"/> 
+        <set-payload value="LogEvent [correlationId=#[payload.correlationId], host=#[payload.host], applicationName=#[payload.applicationName], flowName=#[payload.flowName], message=#[payload.message]] " doc:name="Set Payload to message for log"/>
+        <flow-ref name="#[loggingFlow]" doc:name="Flow Reference"/>
     </flow>
     <flow name="logERROR" processingStrategy="queued-asynchronous">
-        <logger message="LogEvent [correlationId=#[payload.correlationId], host=#[payload.host], applicationName=#[payload.applicationName], flowName=#[payload.flowName], message=#[payload.message]]" level="ERROR" category="com.mycompany.esb.log" doc:name="Logger"/>
+        <logger message="#[payload]" level="ERROR" category="com.mycompany.esb.log" doc:name="Logger"/>
     </flow>
     <flow name="logINFO" processingStrategy="queued-asynchronous">
-        <logger message="LogEvent [correlationId=#[payload.correlationId], host=#[payload.host], applicationName=#[payload.applicationName], flowName=#[payload.flowName], message=#[payload.message]]" level="INFO" category="com.mycompany.esb.log" doc:name="Logger"/>
+        <logger message="#[payload]" level="INFO" category="com.mycompany.esb.log" doc:name="Logger"/>
     </flow>
     <flow name="logDEBUG" processingStrategy="queued-asynchronous">
-        <logger message="LogEvent [correlationId=#[payload.correlationId], host=#[payload.host], applicationName=#[payload.applicationName], flowName=#[payload.flowName], message=#[payload.message]]" level="DEBUG" category="com.mycompany.esb.log" doc:name="Logger"/>
+       <logger message="#[payload]" level="DEBUG" category="com.mycompany.esb.log" doc:name="Logger"/>
     </flow>
     <sub-flow name="buildLogEventAndLog">
         <set-variable variableName="applicationName" value="#[app.name]" doc:name="set applicationName flowVar"/>
         <set-variable variableName="hostName" value="#[server.host]" doc:name="set hostName flowVar"/>
-        <set-variable variableName="logLevel" value="#[flowVars.logLevel == empty ? com.mycompany.esb.logging.model.LogLevel.INFO : flowVars.logLevel]" doc:name="set lotLevel flowVar to INFO if not set"/>
-        
+        <logger level="ERROR" message="Before setting logLevel: #[message]" doc:name="Logger"/>
+        <set-variable variableName="logLevel" value="#[flowVars.logLevel == empty ? com.mycompany.esb.logging.model.LogLevel.INFO : flowVars.logLevel]" doc:name="set logLevel flowVar to INFO if not set"/>
+        <logger level="ERROR" message="After setting logLevel: #[message]" doc:name="Logger"/>
         <dw:transform-message doc:name="Transform Message">
             <dw:set-payload>
 		    	<![CDATA[
