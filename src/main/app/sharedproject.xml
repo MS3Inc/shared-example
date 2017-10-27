@@ -1,9 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<mule xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking" xmlns:vm="http://www.mulesoft.org/schema/mule/vm" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+<mule xmlns:apikit="http://www.mulesoft.org/schema/mule/apikit"
+	xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking" xmlns:vm="http://www.mulesoft.org/schema/mule/vm" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
 	xmlns:spring="http://www.springframework.org/schema/beans" 
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+	xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/apikit http://www.mulesoft.org/schema/mule/apikit/current/mule-apikit.xsd http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
 http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
 http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/current/mule-vm.xsd
 http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd
@@ -13,9 +15,6 @@ http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee
         <set-variable variableName="loggingFlow" value="log#[payload.logLevel]" doc:name="Set loggingFlow flowVar"/> 
         <set-payload value="LogEvent [correlationId=#[payload.correlationId], host=#[payload.host], applicationName=#[payload.applicationName], flowName=#[payload.flowName], message=#[payload.message]] " doc:name="Set Payload to message for log"/>
         <flow-ref name="#[loggingFlow]" doc:name="Flow Reference"/>
-        <catch-exception-strategy doc:name="Catch_Exception_Strategy">
-            <logger message="Unexpected Error [correlationId=#[payload.correlationId], message=#[exception.?cause.?message or exception.?cause or 'Unexpected Exception']]" level="ERROR" category="com.mycompany.esb.log" doc:name="Logger"/>
-        </catch-exception-strategy>
     </flow>
     <sub-flow name="logERROR">
         <logger message="#[payload]" level="ERROR" category="com.mycompany.esb.log" doc:name="Logger"/>
@@ -48,4 +47,43 @@ http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee
         </dw:transform-message> 
         <vm:outbound-endpoint exchange-pattern="one-way" path="log" doc:name="VM"/>
     </sub-flow>
+    
+    <apikit:mapping-exception-strategy name="api-apiKitGlobalExceptionMapping">
+        <apikit:mapping statusCode="404">
+            <apikit:exception value="org.mule.module.apikit.exception.NotFoundException" />
+            <set-property propertyName="Content-Type" value="application/json" doc:name="Property"/>
+            <set-payload value="{ &quot;message&quot;: &quot;Resource not found&quot; }" doc:name="Set Payload"/>
+        </apikit:mapping>
+        <apikit:mapping statusCode="405">
+            <apikit:exception value="org.mule.module.apikit.exception.MethodNotAllowedException" />
+            <set-property propertyName="Content-Type" value="application/json" doc:name="Property"/>
+            <set-payload value="{ &quot;message&quot;: &quot;Method not allowed&quot; }" doc:name="Set Payload"/>
+        </apikit:mapping>
+        <apikit:mapping statusCode="415">
+            <apikit:exception value="org.mule.module.apikit.exception.UnsupportedMediaTypeException" />
+            <set-property propertyName="Content-Type" value="application/json" doc:name="Property"/>
+            <set-payload value="{ &quot;message&quot;: &quot;Unsupported media type&quot; }" doc:name="Set Payload"/>
+        </apikit:mapping>
+        <apikit:mapping statusCode="406">
+            <apikit:exception value="org.mule.module.apikit.exception.NotAcceptableException" />
+            <set-property propertyName="Content-Type" value="application/json" doc:name="Property"/>
+            <set-payload value="{ &quot;message&quot;: &quot;Not acceptable&quot; }" doc:name="Set Payload"/>
+        </apikit:mapping>
+        <apikit:mapping statusCode="400">
+            <apikit:exception value="org.mule.module.apikit.exception.BadRequestException" />
+            <set-payload value="#[exception.?cause.?message or exception.?cause or 'Bad Request']" doc:name="Set Payload"/>
+            <set-variable variableName="logLevel" value="INFO" doc:name="set logLevel flowVar"/>
+            <flow-ref name="buildLogEventAndLog" doc:name="Flow Reference"/>
+            <set-property propertyName="Content-Type" value="application/json" doc:name="Property"/>
+            <set-payload value="{ &quot;message&quot;: &quot;Bad request&quot; }" doc:name="Set Payload"/>
+        </apikit:mapping>
+        <apikit:mapping statusCode="500">
+             <apikit:exception value="java.lang.Exception"/>
+             <set-payload value="#[exception.?cause.?message or exception.?cause or payload or 'Unexpected Exception']" doc:name="Set Payload"/>
+             <set-variable variableName="logLevel" value="ERROR" doc:name="set logLevel flowVar"/>
+             <flow-ref name="buildLogEventAndLog" doc:name="Flow Reference"/>
+             <set-property propertyName="Content-Type" value="application/json" doc:name="Property" />
+             <set-payload value="{ &quot;message&quot;: &quot;Internal server error&quot; }" doc:name="Set Payload" />
+         </apikit:mapping>
+    </apikit:mapping-exception-strategy>
 </mule>
