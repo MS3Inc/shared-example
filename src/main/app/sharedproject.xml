@@ -13,22 +13,23 @@ http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee
         <set-variable variableName="loggingFlow" value="log#[payload.logLevel]" doc:name="Set loggingFlow flowVar"/> 
         <set-payload value="LogEvent [correlationId=#[payload.correlationId], host=#[payload.host], applicationName=#[payload.applicationName], flowName=#[payload.flowName], message=#[payload.message]] " doc:name="Set Payload to message for log"/>
         <flow-ref name="#[loggingFlow]" doc:name="Flow Reference"/>
+        <catch-exception-strategy doc:name="Catch_Exception_Strategy">
+            <logger message="Unexpected Error [correlationId=#[payload.correlationId], message=#[exception.?cause.?message or exception.?cause or 'Unexpected Exception']]" level="ERROR" category="com.mycompany.esb.log" doc:name="Logger"/>
+        </catch-exception-strategy>
     </flow>
-    <flow name="logERROR" processingStrategy="queued-asynchronous">
+    <sub-flow name="logERROR">
         <logger message="#[payload]" level="ERROR" category="com.mycompany.esb.log" doc:name="Logger"/>
-    </flow>
-    <flow name="logINFO" processingStrategy="queued-asynchronous">
+    </sub-flow>
+    <sub-flow name="logINFO">
         <logger message="#[payload]" level="INFO" category="com.mycompany.esb.log" doc:name="Logger"/>
-    </flow>
-    <flow name="logDEBUG" processingStrategy="queued-asynchronous">
+    </sub-flow>
+    <sub-flow name="logDEBUG">
        <logger message="#[payload]" level="DEBUG" category="com.mycompany.esb.log" doc:name="Logger"/>
-    </flow>
+    </sub-flow>
     <sub-flow name="buildLogEventAndLog">
         <set-variable variableName="applicationName" value="#[app.name]" doc:name="set applicationName flowVar"/>
         <set-variable variableName="hostName" value="#[server.host]" doc:name="set hostName flowVar"/>
-        <logger level="ERROR" message="Before setting logLevel: #[message]" doc:name="Logger"/>
         <set-variable variableName="logLevel" value="#[flowVars.logLevel == empty ? com.mycompany.esb.logging.model.LogLevel.INFO : flowVars.logLevel]" doc:name="set logLevel flowVar to INFO if not set"/>
-        <logger level="ERROR" message="After setting logLevel: #[message]" doc:name="Logger"/>
         <dw:transform-message doc:name="Transform Message">
             <dw:set-payload>
 		    	<![CDATA[
